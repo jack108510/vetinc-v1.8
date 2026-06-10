@@ -1150,33 +1150,38 @@
 </style>
 <div class="uplift-board">
   <div class="uplift-header"><span class="uplift-title">Key Indicators</span></div>
-  <div class="uplift-cards">
+  <div class="uplift-cards" style="grid-template-columns:repeat(3,1fr)">
     <div class="uplift-card">
-      <div class="uplift-card-label">Annual Revenue Opportunity</div>
-      <div class="uplift-card-value ub-green" id="ub-annual">--</div>
-      <div class="uplift-card-sub">Total Possible Uplift (Annual)</div>
+      <div class="uplift-card-label">Yesterday's Revenue</div>
+      <div class="uplift-card-value ub-blue" id="ub-yesterday-rev">--</div>
+      <div class="uplift-card-sub">Total revenue yesterday</div>
     </div>
     <div class="uplift-card">
-      <div class="uplift-card-label">Typical Month</div>
-      <div class="uplift-card-value ub-blue" id="ub-baseline-month">--</div>
-      <div class="uplift-card-sub">Avg Revenue / Month (3mo)</div>
+      <div class="uplift-card-label">Avg Transaction Value</div>
+      <div class="uplift-card-value" id="ub-avg-txn">--</div>
+      <div class="uplift-card-sub" id="ub-avg-txn-trend">This week</div>
     </div>
     <div class="uplift-card">
-      <div class="uplift-card-label">Last 30 Days Extra Revenue</div>
-      <div class="uplift-card-value ub-green" id="ub-campaign-month">--</div>
-      <div class="uplift-card-sub">From Pricing Campaigns</div>
+      <div class="uplift-card-label">Extra Profit Captured</div>
+      <div class="uplift-card-value ub-green" id="ub-captured-month">--</div>
+      <div class="uplift-card-sub">This month (from pricing)</div>
     </div>
   </div>
-  <div class="uplift-cards" style="margin-top:1rem">
+  <div class="uplift-cards" style="margin-top:1rem;grid-template-columns:repeat(3,1fr)">
     <div class="uplift-card">
-      <div class="uplift-card-label">Total Extra Revenue</div>
-      <div class="uplift-card-value ub-green" id="ub-captured-total">--</div>
-      <div class="uplift-card-sub">Since Campaign Activation</div>
+      <div class="uplift-card-label">New Clients</div>
+      <div class="uplift-card-value ub-blue" id="ub-new-clients">--</div>
+      <div class="uplift-card-sub">This month</div>
     </div>
     <div class="uplift-card">
-      <div class="uplift-card-label">Extra Revenue Yesterday</div>
-      <div class="uplift-card-value ub-green" id="ub-captured-yesterday">--</div>
-      <div class="uplift-card-sub">Last 24 Hours</div>
+      <div class="uplift-card-label">Total Revenue</div>
+      <div class="uplift-card-value ub-blue" id="ub-total-rev-month">--</div>
+      <div class="uplift-card-sub">This month</div>
+    </div>
+    <div class="uplift-card" style="opacity:0.45;pointer-events:none">
+      <div class="uplift-card-label">Profit Margin</div>
+      <div class="uplift-card-value" id="ub-profit-margin">--</div>
+      <div class="uplift-card-sub">Coming soon</div>
     </div>
   </div>
   <!-- Avg Transaction Value Chart - Full Width -->
@@ -2054,9 +2059,14 @@ function refreshUpliftBoard() {
   var campaignMonth = Math.round(annual / 12);
   
   function set(id, val) { var el = document.getElementById(id); if (el) el.textContent = val; }
-  set('ub-annual', annual > 0 ? fmt$(annual) : '--');
-  set('ub-baseline-month', baselineMonthly > 0 ? fmt$(baselineMonthly) : '--');
-  // ub-campaign-month is set by loadCapturedRevenue() from actual implemented items
+  // Fill new KPI cards
+  // Yesterday's revenue
+  const yesterday = new Date(); yesterday.setDate(yesterday.getDate()-1);
+  const yesterdayStr = yesterday.toISOString().split('T')[0];
+  const yesterdayRows = serviceData.filter(r => r.txn_date === yesterdayStr);
+  // Will be filled from std_service_daily below
+
+  // ub-captured-month is set by loadCapturedRevenue() from actual implemented items
   set('ub-avg-txn', avg > 0 ? fmt$(avg) : '--');
   set('ub-c1', c1 > 0 ? fmt$(c1) + '/yr' : '--');
   set('ub-c2', c2 > 0 ? fmt$(c2) + '/yr' : '--');
