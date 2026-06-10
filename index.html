@@ -1782,17 +1782,17 @@ async function buildAnalytics() {
  const byMonth = {}, byCat = {}, byService = {};
 
  if (selectedDate) {
-   // Day view: fetch from daily_kpis and daily_service_breakdown
+   // Day view: fetch from std_service_daily and daily_service_breakdown
    const dayStr = selectedDate.toISOString().slice(0,10);
    const [dayKpi, daySvc] = await Promise.all([
-     sbFetch('daily_kpis', 'select=*&txn_day=eq.' + dayStr),
+     sbFetch('std_service_daily', 'select=*&clinic_id=eq.rosslyn&day=eq.' + dayStr),
      Promise.resolve([]) /* disabled */ || Promise.resolve(null) /* disabled */ || sbFetch('daily_service_breakdown', 'select=*&txn_day=eq.' + dayStr)
    ]);
    
    if (dayKpi.length) {
      const k = dayKpi[0];
      totalRevenue = k.revenue || 0;
-     totalQty = k.line_items || 0;
+     totalQty = k.transactions || 0;
      visits = k.visits || 0;
      uniqueServices = k.unique_services || 0;
      avgLineAmount = k.avg_line_amount || 0;
@@ -2097,12 +2097,12 @@ async function loadCapturedRevenue() {
 
 async function loadServiceData() {
   try {
-    // Use daily_kpis for reliable daily revenue + visits
-    const res = await fetch(`${SB_URL}/rest/v1/daily_kpis?select=txn_day,revenue,visits,line_items,avg_line_amount&order=txn_day.desc&limit=200`, {
+    // Use std_service_daily for reliable daily revenue + visits
+    const res = await fetch(`${SB_URL}/rest/v1/std_service_daily?select=day,revenue,transactions,clinic_id&clinic_id=eq.rosslyn&order=day.desc&limit=200`, {
       headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY }
     });
     if (!res.ok) {
-      console.error('Failed to load daily_kpis');
+      console.error('Failed to load std_service_daily');
       return;
     }
     const kpis = await res.json();
@@ -2116,7 +2116,7 @@ async function loadServiceData() {
     refreshUpliftBoard();
     buildAvgTxnChart();
   } catch (e) {
-    console.error('Failed to load daily_kpis:', e);
+    console.error('Failed to load std_service_daily:', e);
   }
 }
 
@@ -2126,7 +2126,7 @@ function buildAvgTxnChart() {
 
   const byDate = {};
   window.dailyKpis.forEach(row => {
-    const date = row.txn_day;
+    const date = row.day;
     if (!date) return;
     const d = date.substring(0, 10);
     const rev = parseFloat(row.revenue) || 0;
@@ -5785,7 +5785,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 // ===== REVENUE CALENDAR (clean rewrite) =====
-// Revenue from daily_kpis, COGS from services + items
+// Revenue from std_service_daily, COGS from services + items
 var CAL_YEAR = new Date().getFullYear();
 var CAL_MONTH = new Date().getMonth();
 var calCostsCache = null;
@@ -5801,19 +5801,19 @@ async function calGetCosts(){
 function calFmt(n){return n>=1000?"$"+(n/1000).toFixed(1)+"k":"$"+n.toFixed(0);}
 function calFmtFull(n){return "$"+n.toLocaleString("en-CA",{minimumFractionDigits:2,maximumFractionDigits:2});}
 
-// Fetch month: revenue from daily_kpis, COGS from services
+// Fetch month: revenue from std_service_daily, COGS from services
 async function calFetchMonth(y,m){
   var s=y+"-"+String(m+1).padStart(2,"0")+"-01";
   var eDt=new Date(y,m+1,1);
   var e=eDt.getFullYear()+"-"+String(eDt.getMonth()+1).padStart(2,"0")+"-01";
 
-  // 1. Revenue from daily_kpis (pre-computed, accurate)
+  // 1. Revenue from std_service_daily (pre-computed, accurate)
   var kpiMap={};
-  var kr=await fetch(SB_URL+"/rest/v1/daily_kpis?select=txn_day,revenue,visits,line_items,unique_services,avg_line_amount&txn_day=gte."+s+"&txn_day=lt."+e+"&limit=1000",{headers:{"apikey":SB_KEY,"Authorization":"Bearer "+SB_KEY}});
+  var kr=await fetch(SB_URL+"/rest/v1/std_service_daily?select=day,revenue,transactions,clinic_id&clinic_id=eq.rosslyn&day=gte."+s+"&day=lt."+e+"&limit=1000",{headers:{"apikey":SB_KEY,"Authorization":"Bearer "+SB_KEY}});
   var kpis=await kr.json();
   kpis.forEach(function(k){
-    var day=k.txn_day;
-    if(day) kpiMap[day.slice(0,10)]={rev:k.revenue||0,visits:k.visits||0,line_items:k.line_items||0,unique_services:k.unique_services||0,avg_line:k.avg_line_amount||0};
+    var day=k.day;
+    if(day) kpiMap[day.slice(0,10)]={rev:k.revenue||0,visits:k.visits||0,line_items:k.transactions||0,unique_services:k.unique_services||0,avg_line:k.avg_line_amount||0};
   });
 
   // 2. COGS from daily_cogs (precomputed)
@@ -5842,15 +5842,15 @@ async function calFetchMonth(y,m){
   allDays.forEach(function(day){
     var k=kpiMap[day];
     var st=staffMap[day];
-    byDay[day]={rev:k?k.rev:0,cogs:(cogsMap[day]===undefined?null:cogsMap[day]),staff_cost:st?st.cost:0,staff_hours:st?st.hours:0,staff_count:st?st.count:0,shifts:st?st.shifts:0,visits:k?k.visits:0,line_items:k?k.line_items:0,unique_services:k?k.unique_services:0,avg_line:k?k.avg_line:0};
+    byDay[day]={rev:k?k.rev:0,cogs:(cogsMap[day]===undefined?null:cogsMap[day]),staff_cost:st?st.cost:0,staff_hours:st?st.hours:0,staff_count:st?st.count:0,shifts:st?st.shifts:0,visits:k?k.visits:0,line_items:k?k.transactions:0,unique_services:k?k.unique_services:0,avg_line:k?k.avg_line:0};
   });
   return byDay;
 }
 
 // Fetch single day detail
 async function calFetchDay(day){
-  // Revenue & stats from daily_kpis
-  var kr=await fetch(SB_URL+"/rest/v1/daily_kpis?select=txn_day,revenue,visits,line_items,unique_services,avg_line_amount&txn_day=eq."+day,{headers:{"apikey":SB_KEY,"Authorization":"Bearer "+SB_KEY}});
+  // Revenue & stats from std_service_daily
+  var kr=await fetch(SB_URL+"/rest/v1/std_service_daily?select=day,revenue,transactions,clinic_id&clinic_id=eq.rosslyn&day=eq."+day,{headers:{"apikey":SB_KEY,"Authorization":"Bearer "+SB_KEY}});
   var kpis=await kr.json();
   var kpi=kpis.length?kpis[0]:{revenue:0,visits:0,line_items:0,unique_services:0,avg_line_amount:0};
   var rev=kpi.revenue||0;
@@ -5865,7 +5865,7 @@ async function calFetchDay(day){
   var strows=str.ok?await str.json():[];
   var st=strows.length?strows[0]:{staff_cost:0,staff_hours:0,staff_count:0,shifts:0};
 
-  return {rev:rev,cogs:cogs,staff_cost:st.staff_cost||0,staff_hours:st.staff_hours||0,staff_count:st.staff_count||0,shifts:st.shifts||0,items:{},txns:kpi.line_items||0,visits:kpi.visits||0,line_items:kpi.line_items||0,unique_services:kpi.unique_services||0,avg_line:kpi.avg_line_amount||0};
+  return {rev:rev,cogs:cogs,staff_cost:st.staff_cost||0,staff_hours:st.staff_hours||0,staff_count:st.staff_count||0,shifts:st.shifts||0,items:{},txns:kpi.transactions||0,visits:kpi.visits||0,line_items:kpi.transactions||0,unique_services:kpi.unique_services||0,avg_line:kpi.avg_line_amount||0};
 }
 
 
