@@ -1809,12 +1809,12 @@ async function buildAnalytics() {
      const code = row.code;
      if (classid) {
        if (!byCat[classid]) byCat[classid] = { rev: 0 };
-       byCat[classid].rev += row.revenue || 0;
+       byCat[classid].rev += row.total_revenue || 0;
      }
      if (code) {
        const name = code;
        if (!byService[name]) byService[name] = { rev: 0, qty: 0, classid };
-       byService[name].rev += row.revenue || 0;
+       byService[name].rev += row.total_revenue || 0;
        byService[name].qty += row.qty || 0;
      }
    }
@@ -2135,7 +2135,7 @@ async function loadCapturedRevenue() {
 async function loadServiceData() {
   try {
     // Use daily_kpis for reliable daily revenue + visits
-    const res = await fetch(`${SB_URL}/rest/v1/std_daily_kpis?select=day,revenue,visits,total_transactions,avg_invoice_value&order=day.desc&limit=200`, {
+    const res = await fetch(`${SB_URL}/rest/v1/std_daily_kpis?select=day,total_revenue,total_visits,total_transactions,avg_invoice_value&clinic_id=eq.rosslyn&order=day.desc&limit=200`, {
       headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY }
     });
     if (!res.ok) {
@@ -2147,7 +2147,7 @@ async function loadServiceData() {
 
     // Baseline monthly revenue (last 90 days / 3)
     const last90 = kpis.slice(0, 90);
-    const totalRevenue = last90.reduce((s, r) => s + (parseFloat(r.revenue) || 0), 0);
+    const totalRevenue = last90.reduce((s, r) => s + (parseFloat(r.total_revenue) || 0), 0);
     window._baselineMonthly = Math.round(totalRevenue / 3);
 
     refreshUpliftBoard();
@@ -2166,8 +2166,8 @@ function buildAvgTxnChart() {
     const date = row.day;
     if (!date) return;
     const d = date.substring(0, 10);
-    const rev = parseFloat(row.revenue) || 0;
-    const visits = parseFloat(row.visits) || 0;
+    const rev = parseFloat(row.total_revenue) || 0;
+    const visits = parseFloat(row.total_visits) || 0;
     if (!byDate[d]) byDate[d] = { total: 0, count: 0 };
     byDate[d].total += rev;
     byDate[d].count += visits;
