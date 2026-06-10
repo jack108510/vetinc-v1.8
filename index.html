@@ -1673,7 +1673,19 @@ window.addEventListener("DOMContentLoaded", function(){
 
 async function loadDataAndBuild() {
  try {
-   const svcRows = Promise.resolve([]) /* disabled: service_usage_agg */;
+   const svcRows = await (async () => {
+      const resp = await fetch(SB_URL + '/rest/v1/std_service_daily?select=service_code,revenue,quantity,transactions&clinic_id=eq.rosslyn', {headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+      const rows = await resp.json();
+      // Aggregate by service_code
+      const map = {};
+      for (const r of rows) {
+        if (!map[r.service_code]) map[r.service_code] = {code:r.service_code, total_amount:0, total_qty:0, txn_count:0};
+        map[r.service_code].total_amount += parseFloat(r.revenue||0);
+        map[r.service_code].total_qty += parseFloat(r.quantity||0);
+        map[r.service_code].txn_count += parseInt(r.transactions||0);
+      }
+      return Object.values(map);
+    })();
    // Map to expected format for campaigns
    svcRows.forEach(r => { r.amount = r.total_amount / (r.txn_count || 1); r.quantity = r.total_qty; });
    
