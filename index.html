@@ -1684,16 +1684,16 @@ async function loadDataAndBuild() {
    // Map to expected format for campaigns
    svcRows.forEach(r => { r.amount = r.total_amount / (r.txn_count || 1); r.quantity = r.total_qty; });
    
-   const priceRows = Promise.resolve([]) /* disabled: prices */;
+   const priceRows = []; // disabled: prices
    
-   const treatRows = Promise.resolve([]) /* disabled: treatments */;
-   const itemNameRows = Promise.resolve([]) /* disabled: item_names */;
+   const treatRows = []; // disabled: treatments
+   const itemNameRows = []; // disabled: item_names
    itemNamesMap = {};
    for (const r of itemNameRows) itemNamesMap[r.code] = r.name;
    
-   const acctRows = Promise.resolve([]) /* disabled: accounts */;
+   const acctRows = []; // disabled: accounts
    
-   const mmRows = Promise.resolve([]) /* disabled: micro_margin_agg */;
+   const mmRows = []; // disabled: micro_margin_agg
    
    serviceData = svcRows;
    pricesData = priceRows;
