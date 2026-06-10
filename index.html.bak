@@ -1084,7 +1084,7 @@
   </div>
 </div>
 <!-- HEADER --><header class="header"><div class="header-left"><div class="logo-wrap"><div class="logo-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div><div class="logo-text">Vet <span>INC</span></div></div><div class="header-divider"></div><div class="clinic-name" id="clinicName">Rosslyn Veterinary Clinic</div></div><div class="header-right"><span class="last-updated" id="lastUpdated">Loading data...</span><span class="btn-upload" style="cursor:default;pointer-events:none;opacity:0.75">&#9679; Live</span></div></header><!-- TAB NAV --><nav class="tab-nav"><button class="tab-btn active" onclick="showTab('analytics', this)"><span class="tab-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="18" y="3" width="4" height="18"/><rect x="10" y="8" width="4" height="13"/><rect x="2" y="13" width="4" height="8"/></svg></span> Key Indicators
- </button><button class="tab-btn" onclick="showTab('campaigns', this)" style="pointer-events:none;opacity:0.5" title="Rebuilding - Coming Soon"><span class="tab-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></span> Pricing Intelligence
+ </button><button class="tab-btn" onclick="showTab('campaigns', this)"><span class="tab-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></span> Pricing Intelligence
  </button><button class="tab-btn" onclick="showTab('insights', this)"><span class="tab-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span> Insights &amp; Actions
  </button><button class="tab-btn" onclick="showTab('marketing', this)" style="pointer-events:none;opacity:0.5" title="Coming Soon"><span class="tab-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-5v12l-18-5v-2z"/><path d="M7 13v6"/></svg></span> Marketing</button><button class="tab-btn" onclick="showTab('inventory', this)" style="pointer-events:none;opacity:0.5" title="Coming Soon"><span class="tab-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg></span> Inventory Intelligence
  </button><button class="tab-btn" onclick="showTab('ai', this)" style="pointer-events:none;opacity:0.5" title="Coming Soon"><span class="tab-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></span> AI Assistant
@@ -1673,20 +1673,20 @@ window.addEventListener("DOMContentLoaded", function(){
 
 async function loadDataAndBuild() {
  try {
-   const svcRows = Promise.resolve([]) /* disabled: service_usage_agg */;
+   const svcRows = await sbFetchAll('service_usage_agg', 'select=code,total_amount,total_qty,txn_count,service_type');
    // Map to expected format for campaigns
    svcRows.forEach(r => { r.amount = r.total_amount / (r.txn_count || 1); r.quantity = r.total_qty; });
    
-   const priceRows = Promise.resolve([]) /* disabled: prices */;
+   const priceRows = await sbFetchAll('prices', 'select=treatment_code,price,updated_at&order=updated_at.asc');
    
-   const treatRows = Promise.resolve([]) /* disabled: treatments */;
-   const itemNameRows = Promise.resolve([]) /* disabled: item_names */;
+   const treatRows = await sbFetchAll('treatments', 'select=code,name,type_flag');
+   const itemNameRows = await sbFetchAll('item_names', 'select=code,name');
    itemNamesMap = {};
    for (const r of itemNameRows) itemNamesMap[r.code] = r.name;
    
-   const acctRows = Promise.resolve([]) /* disabled: accounts */;
+   const acctRows = await sbFetchAll('accounts', 'select=txn_date,amount_raw,type_flag&order=txn_date.asc');
    
-   const mmRows = Promise.resolve([]) /* disabled: micro_margin_agg */;
+   const mmRows = await sbFetchAll('micro_margin_agg', 'select=code,price,price_changed,sales_since_change,potential_uplift');
    
    serviceData = svcRows;
    pricesData = priceRows;
@@ -1786,7 +1786,7 @@ async function buildAnalytics() {
    const dayStr = selectedDate.toISOString().slice(0,10);
    const [dayKpi, daySvc] = await Promise.all([
      sbFetch('daily_kpis', 'select=*&txn_day=eq.' + dayStr),
-     Promise.resolve([]) /* disabled */ || Promise.resolve(null) /* disabled */ || sbFetch('daily_service_breakdown', 'select=*&txn_day=eq.' + dayStr)
+     sbFetch('daily_service_breakdown', 'select=*&txn_day=eq.' + dayStr)
    ]);
    
    if (dayKpi.length) {
@@ -1821,7 +1821,7 @@ async function buildAnalytics() {
  } else {
    // All-time view: use accounts for monthly trend + serviceData for totals
    for (const row of (accountsData || [])) {
-     const tot = (row.amount || 0) / 100;
+     const tot = (row.amount_raw || 0) / 100;
      const txn = parseTxnDateISO(row.txn_date);
      if (txn) {
        if (!byMonth[txn.key]) byMonth[txn.key] = { rev: 0, qty: 0 };
@@ -3389,16 +3389,16 @@ const WidgetBoard = (() => {
 
     switch(widget) {
       case 'today-revenue':
-        data = await sbQ('std_transactions', `select=amount,txn_date&txn_date=gte.${params.date}&txn_date=lt.${params.date}&clinic_id=eq.rosslyn`);
+        data = await sbQ('accounts', `select=amount_raw,txn_date&txn_date=gte.${params.date}T00:00:00&txn_date=lt.${params.date}T23:59:59`);
         data = data.map(r => ({amount: (r.amount_raw||0)/100, created_at: r.txn_date}));
         break;
       case 'week-revenue':
       case 'week-vs-last':
-        data = await sbQ('std_transactions', `select=amount,txn_date&txn_date=gte.${params.from}&txn_date=lt.${params.to}&order=txn_date.asc&clinic_id=eq.rosslyn`);
+        data = await sbQ('accounts', `select=amount_raw,txn_date&txn_date=gte.${params.from}&txn_date=lt.${params.to}&order=txn_date.asc`);
         data = data.map(r => ({amount: (r.amount_raw||0)/100, created_at: r.txn_date}));
         break;
       case 'month-revenue':
-        data = await sbQ('std_transactions', `select=amount,txn_date&txn_date=gte.${params.month_start}&txn_date=lt.${params.month_end}&order=txn_date.asc&clinic_id=eq.rosslyn`);
+        data = await sbQ('accounts', `select=amount_raw,txn_date&txn_date=gte.${params.month_start}&txn_date=lt.${params.month_end}&order=txn_date.asc`);
         data = data.map(r => ({amount: (r.amount_raw||0)/100, created_at: r.txn_date}));
         break;
       case 'top-services':
@@ -3406,7 +3406,7 @@ const WidgetBoard = (() => {
         data = await sbQ('std_transactions', `select=service_code,description,amount,quantity,category,txn_date&order=amount.desc&limit=5000&clinic_id=eq.rosslyn`);
         break;
       case 'monthly-trend':
-        data = await sbQ('std_transactions', `select=amount,txn_date&txn_date=gte.${params.from}&order=txn_date.asc&clinic_id=eq.rosslyn`);
+        data = await sbQ('accounts', `select=amount_raw,txn_date&txn_date=gte.${params.from}&order=txn_date.asc`);
         data = data.map(r => ({amount: (r.amount_raw||0)/100, created_at: r.txn_date}));
         break;
       case 'avg-visit-value':
@@ -3455,7 +3455,7 @@ const WidgetBoard = (() => {
         break;
       case 'ytd-revenue': {
         const yr = new Date().getFullYear();
-        const rows = await sbQ('std_transactions', `select=amount&clinic_id=eq.rosslyn&txn_date=gte.${yr}-01-01&txn_date=lt.${yr+1}-01-01`);
+        const rows = await sbQ('accounts', `select=amount_raw&txn_date=gte.${yr}-01-01&txn_date=lt.${yr+1}-01-01`);
         data = rows.map(r => ({amount: (r.amount_raw||0)/100}));
         break;
       }
@@ -4642,7 +4642,7 @@ const InsightsDashboard = (() => {
   async function fetchRevenue() {
     try {
       const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-      const rows = Promise.resolve([]) /* disabled: accounts */;
+      const rows = await sbFetchAll('accounts', 'select=amount_raw,txn_date&txn_date=gte.' + since + 'T00:00:00&order=txn_date.asc');
       dailyRevMap = {};
       for (const r of rows) {
         const day = (r.txn_date || '').slice(0, 10);
