@@ -1412,13 +1412,21 @@
       </div>
     </div>
   </div>
-</section><section id="tab-settings" class="section"><div class="settings-wrap" style="max-width:960px;margin:0 auto;padding:2rem 1.5rem">
+</section>
+<style>
+.settings-nav-btn{padding:6px 16px;border:1px solid var(--border);border-radius:8px;font-size:0.8rem;font-weight:600;color:var(--muted);background:#fff;cursor:pointer;transition:all .2s}
+.settings-nav-btn:hover{border-color:var(--primary);color:var(--primary)}
+.settings-nav-btn.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+.settings-section{animation:fadeIn .2s}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+</style>
+<section id="tab-settings" class="section"><div class="settings-wrap" style="max-width:960px;margin:0 auto;padding:2rem 1.5rem">
 
 <!-- Page Header -->
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2rem">
   <div>
     <div style="font-size:1.4rem;font-weight:900;color:var(--text);letter-spacing:-0.02em">Settings</div>
-    <div style="font-size:0.82rem;color:var(--muted);margin-top:2px">Manage your clinic profile and cost structure</div>
+    <div style="font-size:0.82rem;color:var(--muted);margin-top:2px">Clinic configuration & account management</div>
   </div>
   <div style="display:flex;align-items:center;gap:0.75rem">
     <span class="settings-save-indicator" id="settingsSaveIndicator" style="font-size:0.78rem;color:var(--green);font-weight:600;opacity:0;transition:opacity 0.4s">Saved</span>
@@ -1441,75 +1449,207 @@
       <div style="font-size:0.9rem;font-weight:800;color:var(--text);margin-top:4px">Avimark</div>
     </div>
     <div style="background:var(--surface2);border-radius:12px;padding:0.75rem 1rem;text-align:center">
-      <div style="font-size:0.65rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em">ETL Sync</div>
-      <div style="font-size:0.9rem;font-weight:800;color:var(--green);margin-top:4px">Nightly 2AM</div>
+      <div style="font-size:0.65rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em">Plan</div>
+      <div style="font-size:0.9rem;font-weight:800;color:var(--primary);margin-top:4px">Pro</div>
     </div>
     <div style="background:var(--surface2);border-radius:12px;padding:0.75rem 1rem;text-align:center">
-      <div style="font-size:0.65rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em">Tables Synced</div>
-      <div style="font-size:0.9rem;font-weight:800;color:var(--text);margin-top:4px">30</div>
+      <div style="font-size:0.65rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em">Data Since</div>
+      <div style="font-size:0.9rem;font-weight:800;color:var(--text);margin-top:4px">Feb 2019</div>
     </div>
     <div style="background:var(--surface2);border-radius:12px;padding:0.75rem 1rem;text-align:center">
       <div style="font-size:0.65rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em">Total Records</div>
-      <div style="font-size:0.9rem;font-weight:800;color:var(--text);margin-top:4px">2.58M</div>
+      <div style="font-size:0.9rem;font-weight:800;color:var(--text);margin-top:4px">930K</div>
     </div>
   </div>
 </div>
 
-<!-- Cost Summary Banner -->
-<div style="background:linear-gradient(135deg,#1e3a5f,#2563eb);border-radius:20px;padding:1.5rem 1.75rem;margin-bottom:1.5rem;color:#fff;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem">
-  <div>
-    <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;opacity:0.7">Total Monthly Operating Cost</div>
-    <div style="font-size:2rem;font-weight:900;line-height:1.1;margin-top:4px" id="settingsGrandTotal">$0.00</div>
-  </div>
-  <div style="display:flex;gap:2rem">
-    <div style="text-align:center">
-      <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;opacity:0.6">Per Calendar Day</div>
-      <div style="font-size:1.2rem;font-weight:800;margin-top:2px" id="settingsDailyRate">$0.00</div>
-    </div>
-    <div style="text-align:center">
-      <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;opacity:0.6">Per Working Day</div>
-      <div style="font-size:1.2rem;font-weight:800;margin-top:2px" id="settingsWorkingDayRate">$0.00</div>
-    </div>
-    <div style="text-align:center">
-      <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;opacity:0.6">Break-Even / Day</div>
-      <div style="font-size:1.2rem;font-weight:800;margin-top:2px" id="settingsBreakEven">$0.00</div>
+<!-- Settings Navigation -->
+<div style="display:flex;gap:0.5rem;margin-bottom:1.5rem;flex-wrap:wrap">
+  <button class="settings-nav-btn active" onclick="showSettingsSection('account', this)">Account</button>
+  <button class="settings-nav-btn" onclick="showSettingsSection('data', this)">Data Source</button>
+  <button class="settings-nav-btn" onclick="showSettingsSection('costs', this)">Cost Structure</button>
+  <button class="settings-nav-btn" onclick="showSettingsSection('billing', this)">Billing</button>
+  <button class="settings-nav-btn" onclick="showSettingsSection('users', this)">Team Access</button>
+  <button class="settings-nav-btn" onclick="showSettingsSection('audit', this)">Audit Log</button>
+</div>
+
+<!-- Account Section -->
+<div id="settings-account" class="settings-section">
+  <div style="background:#fff;border:1px solid var(--border);border-radius:16px;padding:1.5rem;margin-bottom:1rem">
+    <div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:1rem">Clinic Account</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+      <div>
+        <label style="font-size:0.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Clinic Name</label>
+        <input type="text" value="Rosslyn Veterinary Clinic" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;margin-top:4px" id="sett-clinic-name">
+      </div>
+      <div>
+        <label style="font-size:0.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Clinic ID</label>
+        <input type="text" value="rosslyn" readonly style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;margin-top:4px;background:#f8fafc;color:var(--muted)">
+      </div>
+      <div>
+        <label style="font-size:0.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Email</label>
+        <input type="email" value="admin@rosslynvet.com" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;margin-top:4px" id="sett-email">
+      </div>
+      <div>
+        <label style="font-size:0.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Timezone</label>
+        <select style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;margin-top:4px">
+          <option>America/Edmonton (MST/MDT)</option>
+          <option>America/Toronto (EST/EDT)</option>
+          <option>America/Vancouver (PST/PDT)</option>
+        </select>
+      </div>
     </div>
   </div>
 </div>
 
-<!-- Two-column cost cards -->
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem">
-
-  <!-- Fixed Costs -->
-  <div style="background:rgba(255,255,255,0.84);backdrop-filter:blur(20px) saturate(1.6);-webkit-backdrop-filter:blur(20px) saturate(1.6);border-radius:20px;box-shadow:0 4px 24px rgba(0,0,0,0.10),0 1px 4px rgba(0,0,0,0.06);padding:1.5rem 1.5rem 1.25rem;display:flex;flex-direction:column">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:0.3rem">
-      <div style="width:32px;height:32px;border-radius:9px;background:rgba(37,99,235,0.1);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></div>
-      <div style="font-size:1rem;font-weight:800;color:var(--text)">Fixed Costs</div>
+<!-- Data Source Section -->
+<div id="settings-data" class="settings-section" style="display:none">
+  <div style="background:#fff;border:1px solid var(--border);border-radius:16px;padding:1.5rem;margin-bottom:1rem">
+    <div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:1rem">Data Source</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+      <div>
+        <label style="font-size:0.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">PMS System</label>
+        <div style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;margin-top:4px;background:#f8fafc">AVImark</div>
+      </div>
+      <div>
+        <label style="font-size:0.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Import Type</label>
+        <div style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;margin-top:4px;background:#f8fafc">Flat file export</div>
+      </div>
+      <div>
+        <label style="font-size:0.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Last Import</label>
+        <div style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;margin-top:4px;background:#f8fafc">April 1, 2026</div>
+      </div>
+      <div>
+        <label style="font-size:0.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Records Imported</label>
+        <div style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;margin-top:4px;background:#f8fafc">930,018</div>
+      </div>
     </div>
-    <div style="font-size:0.75rem;color:var(--muted);margin-bottom:1rem">Monthly recurring fixed expenses</div>
-    <div id="fixedCostsList" style="flex:1"></div>
-    <button class="settings-add-btn" onclick="ClinicSettings.addRow('fixed')" style="margin-top:0.75rem">+ Add Fixed Cost</button>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem;padding-top:0.85rem;border-top:2px solid var(--border)">
-      <span style="font-size:0.9rem;font-weight:800;color:var(--text)">Total Fixed</span>
-      <span style="font-size:1.15rem;font-weight:900;color:var(--primary)" id="fixedCostsTotal">$0.00</span>
+    <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">
+      <button style="background:var(--primary);color:#fff;border:none;padding:8px 20px;border-radius:8px;font-size:0.85rem;font-weight:600;cursor:pointer">Upload New Data</button>
+      <span style="font-size:0.78rem;color:var(--muted);margin-left:8px">Supported: CSV, AVImark export files</span>
+    </div>
+  </div>
+</div>
+
+<!-- Cost Structure Section -->
+<div id="settings-costs" class="settings-section" style="display:none">
+  <!-- Cost Summary Banner -->
+  <div style="background:linear-gradient(135deg,#1e3a5f,#2563eb);border-radius:20px;padding:1.5rem 1.75rem;margin-bottom:1.5rem;color:#fff;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem">
+    <div>
+      <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;opacity:0.7">Total Monthly Operating Cost</div>
+      <div style="font-size:2rem;font-weight:900;line-height:1.1;margin-top:4px" id="settingsGrandTotal">$0.00</div>
+    </div>
+    <div style="display:flex;gap:2rem">
+      <div style="text-align:center">
+        <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;opacity:0.6">Per Calendar Day</div>
+        <div style="font-size:1.2rem;font-weight:800;margin-top:2px" id="settingsDailyRate">$0.00</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;opacity:0.6">Per Working Day</div>
+        <div style="font-size:1.2rem;font-weight:800;margin-top:2px" id="settingsWorkingDayRate">$0.00</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;opacity:0.6">Break-Even / Day</div>
+        <div style="font-size:1.2rem;font-weight:800;margin-top:2px" id="settingsBreakEven">$0.00</div>
+      </div>
     </div>
   </div>
 
-  <!-- Utility Costs -->
-  <div style="background:rgba(255,255,255,0.84);backdrop-filter:blur(20px) saturate(1.6);-webkit-backdrop-filter:blur(20px) saturate(1.6);border-radius:20px;box-shadow:0 4px 24px rgba(0,0,0,0.10),0 1px 4px rgba(0,0,0,0.06);padding:1.5rem 1.5rem 1.25rem;display:flex;flex-direction:column">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:0.3rem">
-      <div style="width:32px;height:32px;border-radius:9px;background:rgba(234,88,12,0.1);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
-      <div style="font-size:1rem;font-weight:800;color:var(--text)">Utility Costs</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem">
+    <div style="background:#fff;border:1px solid var(--border);border-radius:16px;padding:1.5rem">
+      <div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:0.5rem">Fixed Costs</div>
+      <div style="font-size:0.75rem;color:var(--muted);margin-bottom:1rem">Monthly recurring fixed expenses</div>
+      <div id="fixedCostsList"></div>
+      <button class="settings-add-btn" onclick="ClinicSettings.addRow('fixed')" style="margin-top:0.75rem">+ Add Fixed Cost</button>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem;padding-top:0.85rem;border-top:2px solid var(--border)">
+        <span style="font-size:0.9rem;font-weight:800">Total Fixed</span>
+        <span style="font-size:1.15rem;font-weight:900;color:var(--primary)" id="fixedCostsTotal">$0.00</span>
+      </div>
     </div>
-    <div style="font-size:0.75rem;color:var(--muted);margin-bottom:1rem">Monthly utility and service expenses</div>
-    <div id="utilityCostsList" style="flex:1"></div>
-    <button class="settings-add-btn" onclick="ClinicSettings.addRow('utility')" style="margin-top:0.75rem">+ Add Utility Cost</button>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem;padding-top:0.85rem;border-top:2px solid var(--border)">
-      <span style="font-size:0.9rem;font-weight:800;color:var(--text)">Total Utilities</span>
-      <span style="font-size:1.15rem;font-weight:900;color:var(--orange)" id="utilityCostsTotal">$0.00</span>
+    <div style="background:#fff;border:1px solid var(--border);border-radius:16px;padding:1.5rem">
+      <div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:0.5rem">Variable Costs</div>
+      <div style="font-size:0.75rem;color:var(--muted);margin-bottom:1rem">Monthly variable expenses</div>
+      <div id="utilityCostsList"></div>
+      <button class="settings-add-btn" onclick="ClinicSettings.addRow('utility')" style="margin-top:0.75rem">+ Add Variable Cost</button>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem;padding-top:0.85rem;border-top:2px solid var(--border)">
+        <span style="font-size:0.9rem;font-weight:800">Total Variable</span>
+        <span style="font-size:1.15rem;font-weight:900;color:var(--orange)" id="utilityCostsTotal">$0.00</span>
+      </div>
     </div>
   </div>
+</div>
 
+<!-- Billing Section -->
+<div id="settings-billing" class="settings-section" style="display:none">
+  <div style="background:#fff;border:1px solid var(--border);border-radius:16px;padding:1.5rem;margin-bottom:1rem">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+      <div style="font-size:1rem;font-weight:700;color:var(--text)">Subscription</div>
+      <div style="background:rgba(37,99,235,0.1);color:var(--primary);padding:4px 14px;border-radius:20px;font-size:0.75rem;font-weight:700">Pro Plan</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1rem">
+      <div style="background:var(--surface2);border-radius:12px;padding:1rem;text-align:center">
+        <div style="font-size:0.65rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em">Monthly Fee</div>
+        <div style="font-size:1.5rem;font-weight:900;color:var(--text);margin-top:4px">$299</div>
+      </div>
+      <div style="background:var(--surface2);border-radius:12px;padding:1rem;text-align:center">
+        <div style="font-size:0.65rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em">Revenue Share</div>
+        <div style="font-size:1.5rem;font-weight:900;color:var(--green);margin-top:4px">15%</div>
+        <div style="font-size:0.7rem;color:var(--muted)">of captured uplift</div>
+      </div>
+      <div style="background:var(--surface2);border-radius:12px;padding:1rem;text-align:center">
+        <div style="font-size:0.65rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em">Status</div>
+        <div style="font-size:1rem;font-weight:800;color:var(--green);margin-top:4px">● Active</div>
+      </div>
+    </div>
+    <div style="padding-top:1rem;border-top:1px solid var(--border)">
+      <div style="font-size:0.85rem;font-weight:600;color:var(--text);margin-bottom:0.5rem">Revenue Share This Month</div>
+      <div style="display:flex;gap:1rem">
+        <div style="flex:1;background:var(--surface2);border-radius:8px;padding:0.75rem;text-align:center">
+          <div style="font-size:0.68rem;color:var(--muted)">Captured Uplift</div>
+          <div style="font-size:1.1rem;font-weight:800;color:var(--text)" id="sett-bill-uplift">$0</div>
+        </div>
+        <div style="flex:1;background:var(--surface2);border-radius:8px;padding:0.75rem;text-align:center">
+          <div style="font-size:0.68rem;color:var(--muted)">Our Share (15%)</div>
+          <div style="font-size:1.1rem;font-weight:800;color:var(--primary)" id="sett-bill-share">$0</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Team Access Section (greyed - Phase 2) -->
+<div id="settings-users" class="settings-section" style="display:none">
+  <div style="background:#fff;border:1px solid var(--border);border-radius:16px;padding:1.5rem;opacity:0.5;position:relative">
+    <div style="position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,0.5);z-index:10;display:flex;align-items:center;justify-content:center;border-radius:16px">
+      <div style="text-align:center"><div style="font-size:1rem;font-weight:800;color:var(--muted)">Coming Soon</div><div style="font-size:0.8rem;color:var(--muted);margin-top:4px">Team access & role management</div></div>
+    </div>
+    <div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:1rem">Team Access</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem">
+      <div style="background:var(--surface2);border-radius:8px;padding:0.75rem;text-align:center">
+        <div style="font-size:0.68rem;color:var(--muted)">Owner</div>
+        <div style="font-size:0.9rem;font-weight:800">Scott W.</div>
+      </div>
+      <div style="background:var(--surface2);border-radius:8px;padding:0.75rem;text-align:center">
+        <div style="font-size:0.68rem;color:var(--muted)">Admin</div>
+        <div style="font-size:0.9rem;font-weight:800">Jack W.</div>
+      </div>
+      <div style="background:var(--surface2);border-radius:8px;padding:0.75rem;text-align:center">
+        <div style="font-size:0.68rem;color:var(--muted)">Role</div>
+        <div style="font-size:0.9rem;font-weight:800">Admin</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Audit Log Section (greyed - Phase 2) -->
+<div id="settings-audit" class="settings-section" style="display:none">
+  <div style="background:#fff;border:1px solid var(--border);border-radius:16px;padding:1.5rem;opacity:0.5;position:relative">
+    <div style="position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,0.5);z-index:10;display:flex;align-items:center;justify-content:center;border-radius:16px">
+      <div style="text-align:center"><div style="font-size:1rem;font-weight:800;color:var(--muted)">Coming Soon</div><div style="font-size:0.8rem;color:var(--muted);margin-top:4px">Full audit trail of all changes</div></div>
+    </div>
+    <div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:1rem">Audit Log</div>
+    <div style="font-size:0.85rem;color:var(--muted)">Track all pricing changes, approvals, and campaign activations.</div>
+  </div>
 </div>
 
 </div></section><script>
@@ -6385,3 +6525,11 @@ function generateReport(type){
   const html = `
 </body>
 </html>
+
+function showSettingsSection(name, btn) {
+  document.querySelectorAll('.settings-section').forEach(s => s.style.display = 'none');
+  document.querySelectorAll('.settings-nav-btn').forEach(b => b.classList.remove('active'));
+  var sec = document.getElementById('settings-' + name);
+  if (sec) sec.style.display = 'block';
+  if (btn) btn.classList.add('active');
+}
