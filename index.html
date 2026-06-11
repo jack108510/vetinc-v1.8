@@ -1217,37 +1217,6 @@
         <span class="uplift-breakdown-label">Inflation Adjustment</span>
         <span class="uplift-breakdown-value" id="ub-c1">--</span>
       </div>
-  <!-- Revenue Trend Since Vet INC -->
-  <div style="margin-top:1.25rem;background:#fff;border:1px solid var(--border);border-radius:16px;padding:1.75rem;box-shadow:0 1px 6px rgba(37,99,235,.05)">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1rem">
-      <div>
-        <div style="font-size:1rem;font-weight:700;color:var(--text)">Revenue Trend Since Vet INC</div>
-        <div style="font-size:0.8rem;color:var(--muted);margin-top:.25rem">Baseline vs actual revenue after pricing optimization</div>
-      </div>
-      <div id="trendStatus" style="display:flex;gap:1.5rem">
-        <div style="text-align:right">
-          <div style="font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)">Baseline Avg</div>
-          <div style="font-size:1.1rem;font-weight:700;color:var(--text)" id="trendBaseline">--</div>
-        </div>
-        <div style="text-align:right">
-          <div style="font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)">Current Avg</div>
-          <div style="font-size:1.1rem;font-weight:700;color:var(--text)" id="trendCurrent">--</div>
-        </div>
-        <div style="text-align:right">
-          <div style="font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)">Change</div>
-          <div style="font-size:1.1rem;font-weight:700" id="trendChange">--</div>
-        </div>
-        <div style="text-align:right">
-          <div style="font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)">Total Captured</div>
-          <div style="font-size:1.1rem;font-weight:700;color:var(--green)" id="trendCaptured">$0</div>
-        </div>
-      </div>
-    </div>
-    <div style="height:120px;margin-top:1rem">
-      <canvas id="revenueTrendChart"></canvas>
-    </div>
-  </div>
-
       <div class="uplift-breakdown-item">
         <span class="uplift-breakdown-label">.99 Pricing</span>
         <span class="uplift-breakdown-value" id="ub-c2">--</span>
@@ -2183,7 +2152,6 @@ async function loadServiceData() {
 
     refreshUpliftBoard();
     buildAvgTxnChart();
-    buildRevenueTrendChart();
   } catch (e) {
     console.error('Failed to load daily_kpis:', e);
   }
@@ -2244,88 +2212,7 @@ function buildAvgTxnChart() {
   });
 }
 
-function buildRevenueTrendChart() {
-  if (!window.dailyKpis || window.dailyKpis.length === 0) return;
 
-  // Get last 365 days, reverse to chronological
-  const data = window.dailyKpis.slice(0, 365).reverse();
-
-  // Baseline = average daily revenue from first 90 days
-  const first90 = data.slice(0, Math.min(90, data.length));
-  const baselineDaily = first90.reduce((s,r) => s + (parseFloat(r.total_revenue) || 0), 0) / first90.length;
-
-  // Current = average daily revenue from last 30 days
-  const last30 = data.slice(-30);
-  const currentDaily = last30.reduce((s,r) => s + (parseFloat(r.total_revenue) || 0), 0) / last30.length;
-
-  // Compute change
-  const changePct = baselineDaily > 0 ? ((currentDaily - baselineDaily) / baselineDaily * 100).toFixed(1) : 0;
-
-  // Total captured = sum of (actual - baseline) for all days after first 90
-  const afterBaseline = data.slice(90);
-  const totalCaptured = afterBaseline.reduce((s,r) => s + Math.max(0, (parseFloat(r.total_revenue) || 0) - baselineDaily), 0);
-
-  // Update cards
-  document.getElementById('trendBaseline').textContent = '$' + Math.round(baselineDaily).toLocaleString() + '/day';
-  document.getElementById('trendCurrent').textContent = '$' + Math.round(currentDaily).toLocaleString() + '/day';
-
-  const changeEl = document.getElementById('trendChange');
-  changeEl.textContent = (changePct >= 0 ? '+' : '') + changePct + '%';
-  changeEl.style.color = changePct >= 0 ? 'var(--green)' : 'var(--red)';
-
-  document.getElementById('trendCaptured').textContent = totalCaptured > 0 ? '+$' + Math.round(totalCaptured).toLocaleString() : '$0';
-
-  // Build chart: daily revenue vs baseline line
-  const labels = data.map(r => r.day);
-  const actual = data.map(r => parseFloat(r.total_revenue) || 0);
-  const baseline = data.map(() => baselineDaily);
-
-  const canvas = document.getElementById('revenueTrendChart');
-  if (!canvas) return;
-  if (window._trendChart) window._trendChart.destroy();
-  window._trendChart = new Chart(canvas.getContext('2d'), {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [
-        {
-          label: 'Daily Revenue',
-          data: actual,
-          borderColor: '#2563eb',
-          backgroundColor: 'rgba(37,99,235,0.08)',
-          fill: true,
-          tension: 0.3,
-          pointRadius: 0,
-          borderWidth: 2
-        },
-        {
-          label: 'Baseline',
-          data: baseline,
-          borderColor: '#94a3b8',
-          borderDash: [6, 4],
-          borderWidth: 1.5,
-          pointRadius: 0,
-          fill: false
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: {
-        callbacks: { label: ctx => ctx.dataset.label + ': $' + Math.round(ctx.parsed.y).toLocaleString() }
-      }},
-      scales: {
-        x: { display: false },
-        y: {
-          display: true,
-          ticks: { callback: v => '$' + (v/1000).toFixed(0) + 'K', color: '#94a3b8', font: { size: 10 } },
-          grid: { color: 'rgba(148,163,184,0.1)' }
-        }
-      }
-    }
-  });
-}
 
 
 function addToHistory(role, content, intent) {
