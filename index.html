@@ -2204,11 +2204,12 @@ function buildAvgTxnChart() {
       trend = first30 > 0 ? ((avg30 - first30) / first30 * 100).toFixed(1) : 0;
     }
   } else {
-    // No implementation date yet - use standard first 30 vs last 30
+    // No implementation date yet
     current = values[values.length - 1];
     avg30 = values.slice(-30).reduce((s,v) => s+v, 0) / Math.max(values.slice(-30).length, 1);
-    const first30 = values.slice(0, 30).reduce((s,v) => s+v, 0) / Math.max(values.slice(0, 30).length, 1);
-    trend = first30 > 0 ? ((avg30 - first30) / first30 * 100).toFixed(1) : 0;
+    trend = '0.0';
+    var trendLabel = document.getElementById('chart-trend-label');
+    if (trendLabel) trendLabel.textContent = 'VET INC LIFT';
   }
 
   document.getElementById('chart-current').textContent = '$' + Math.round(current).toLocaleString();
