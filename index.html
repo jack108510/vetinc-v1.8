@@ -2145,6 +2145,19 @@ async function loadServiceData() {
     const kpis = await res.json();
     window.dailyKpis = kpis;
 
+    // Fetch Vet INC implementation start date (first implemented item)
+    try {
+      const implRes = await fetch(SB_URL + '/rest/v1/std_approval_queue?select=created_at&clinic_id=eq.rosslyn&status=eq.implemented&order=created_at.asc&limit=1', {
+        headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY }
+      });
+      if (implRes.ok) {
+        const implData = await implRes.json();
+        if (implData.length > 0) {
+          window._vetIncStartDate = implData[0].created_at.substring(0, 10);
+        }
+      }
+    } catch(e) {}
+
     // Baseline monthly revenue (last 90 days / 3)
     const last90 = kpis.slice(0, 90);
     const totalRevenue = last90.reduce((s, r) => s + (parseFloat(r.total_revenue) || 0), 0);
@@ -2161,16 +2174,42 @@ function buildAvgTxnChart() {
   const canvas = document.getElementById('avgTxnChart');
   if (!canvas || !window.dailyKpis || window.dailyKpis.length === 0) return;
 
-  // Get last 365 days of revenue from std_daily_kpis (already loaded descending)
   const data = window.dailyKpis.slice(0, 365).reverse();
   const labels = data.map(r => r.day);
   const values = data.map(r => parseFloat(r.total_revenue) || 0);
 
-  // Stats
-  const current = values.length > 0 ? values[values.length - 1] : 0;
-  const avg30 = values.slice(-30).reduce((s,v) => s+v, 0) / Math.max(values.slice(-30).length, 1);
-  const first30 = values.slice(0, 30).reduce((s,v) => s+v, 0) / Math.max(values.slice(0, 30).length, 1);
-  const trend = first30 > 0 ? ((avg30 - first30) / first30 * 100).toFixed(1) : 0;
+  // Check if Vet INC has an implementation date (first approved item in std_approval_queue)
+  const vetIncDate = window._vetIncStartDate || null;
+
+  let current, avg30, trend, beforeLabel, afterLabel;
+
+  if (vetIncDate) {
+    // Split data at Vet INC start date
+    const splitIdx = data.findIndex(r => r.day >= vetIncDate);
+    if (splitIdx > 0 && splitIdx < data.length) {
+      const before = values.slice(0, splitIdx);
+      const after = values.slice(splitIdx);
+      const beforeAvg = before.reduce((s,v) => s+v, 0) / before.length;
+      const afterAvg = after.reduce((s,v) => s+v, 0) / after.length;
+      current = values[values.length - 1];
+      avg30 = afterAvg;
+      trend = beforeAvg > 0 ? ((afterAvg - beforeAvg) / beforeAvg * 100).toFixed(1) : 0;
+      beforeLabel = 'Before';
+      afterLabel = 'After Vet INC';
+    } else {
+      // Date is outside our data range, fall back to normal calc
+      current = values[values.length - 1];
+      avg30 = values.slice(-30).reduce((s,v) => s+v, 0) / Math.max(values.slice(-30).length, 1);
+      const first30 = values.slice(0, 30).reduce((s,v) => s+v, 0) / Math.max(values.slice(0, 30).length, 1);
+      trend = first30 > 0 ? ((avg30 - first30) / first30 * 100).toFixed(1) : 0;
+    }
+  } else {
+    // No implementation date yet - use standard first 30 vs last 30
+    current = values[values.length - 1];
+    avg30 = values.slice(-30).reduce((s,v) => s+v, 0) / Math.max(values.slice(-30).length, 1);
+    const first30 = values.slice(0, 30).reduce((s,v) => s+v, 0) / Math.max(values.slice(0, 30).length, 1);
+    trend = first30 > 0 ? ((avg30 - first30) / first30 * 100).toFixed(1) : 0;
+  }
 
   document.getElementById('chart-current').textContent = '$' + Math.round(current).toLocaleString();
   document.getElementById('chart-avg30').textContent = '$' + Math.round(avg30).toLocaleString();
@@ -2197,22 +2236,38 @@ function buildAvgTxnChart() {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: {
-        callbacks: { label: ctx => '$' + Math.round(ctx.parsed.y).toLocaleString() }
-      }},
-      scales: {
-        x: { display: false },
-        y: {
-          display: true,
-          ticks: { callback: v => '$' + (v/1000).toFixed(0) + 'K', color: '#94a3b8', font: { size: 10 } },
-          grid: { color: 'rgba(148,163,184,0.1)' }
-        }
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => '$' + Math.round(ctx.parsed.y).toLocaleString() } } },
+      scales: { x: { display: false }, y: { ticks: { callback: v => '$' + (v/1000).toFixed(0) + 'K', color: '#94a3b8', font: { size: 10 } }, grid: { color: 'rgba(148,163,184,0.1)' } } }
+    },
+    plugins: window._vetIncStartDate ? [{
+      id: 'vetincLine',
+      afterDraw: function(chart) {
+        const xScale = chart.scales.x;
+        const yScale = chart.scales.y;
+        const ctx = chart.ctx;
+        const splitDay = window._vetIncStartDate;
+        const idx = labels.indexOf(splitDay);
+        if (idx < 0) return;
+        const xPx = xScale.getPixelForValue(idx);
+        if (isNaN(xPx)) return;
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(xPx, yScale.top);
+        ctx.lineTo(xPx, yScale.bottom);
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#16a34a';
+        ctx.setLineDash([4, 3]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#16a34a';
+        ctx.font = 'bold 10px system-ui';
+        ctx.textAlign = 'center';
+        ctx.fillText('Vet INC', xPx, yScale.top - 8);
+        ctx.restore();
       }
-    }
+    }] : []
   });
 }
-
-
 
 
 function addToHistory(role, content, intent) {
