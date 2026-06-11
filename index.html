@@ -2001,23 +2001,51 @@ function c1Render(filter) {
 }
 
 async function buildC2() {
-  const data = await campaignFetch('99-pricing');
-  const items = data.items || [];
-  c2AllItems = items;
-  window.c2Items = items; // for campaign tracking
-  c2AllItems = items;
-  window.c2Items = items; // for campaign tracking
+  try {
+    // Load 99-cent pricing recommendations from std_approval_queue
+    const res = await fetch(SB_URL + '/rest/v1/std_approval_queue?select=id,service_code,service_name,old_price,suggested_price,price_increase_pct,expected_monthly_uplift,expected_annual_uplift,volume_risk,priority,status&clinic_id=eq.rosslyn&strategy=eq.price_ending&order=expected_annual_uplift.desc&limit=500', {
+      headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY }
+    });
+    if (!res.ok) throw new Error('Failed to load queue: ' + res.status);
+    const items = await res.json();
 
-  const grandUplift = items.reduce((s, i) => s + (i.uplift || 0), 0);
-  const grandVolume = items.reduce((s, i) => s + (i.volume || 0), 0);
+    const pending = items.filter(i => i.status === 'pending');
+    const implemented = items.filter(i => i.status === 'implemented');
+    const totalUplift = pending.reduce((s, i) => s + (parseFloat(i.expected_annual_uplift) || 0), 0);
+    const implementedUplift = implemented.reduce((s, i) => s + (parseFloat(i.expected_annual_uplift) || 0), 0);
 
-  document.getElementById('c2Badge').textContent = `${fmt$(grandUplift)} missed last year`;
-  document.getElementById('c2Summary').innerHTML = `
-<div class="stat-bar-item"><div class="stat-bar-label">Missed Revenue</div><div class="stat-bar-value" style="color:var(--purple)">${fmt$(grandUplift)}</div><div class="stat-bar-sub">if all adjusted to .99</div></div><div class="stat-bar-item"><div class="stat-bar-label">Affected Services</div><div class="stat-bar-value">${items.length}</div><div class="stat-bar-sub">not at .99 pricing</div></div><div class="stat-bar-item"><div class="stat-bar-label">Total Transactions</div><div class="stat-bar-value">${fmtN(Math.round(grandVolume))}</div><div class="stat-bar-sub">units across affected items</div></div><div class="stat-bar-item"><div class="stat-bar-label">Avg Gain / Unit</div><div class="stat-bar-value">${grandVolume > 0 ? fmt$(grandUplift / grandVolume) : ''}</div><div class="stat-bar-sub">across all affected items</div></div>
-  `;
+    var badge = document.getElementById('c2Badge');
+    if (badge) badge.textContent = pending.length + ' items  |  $' + Math.round(totalUplift).toLocaleString() + '/yr potential';
 
-  window._c2Uplift = grandUplift; refreshUpliftBoard();
-  document.getElementById('c2Table').innerHTML = items.slice(0, 100).map(it => `<tr><td>${escHtml(it.service)}</td><td class="muted">${escHtml(it.category || '')}</td><td class="num">${fmt$(it.currentPrice)}</td><td class="num blue">${fmt$(it['99Price'])}</td><td class="num" style="color:var(--purple);font-weight:700">+${fmt$(it.gainPerTxn)}</td><td class="num">${fmtN(Math.round(it.volume || 0))}</td><td class="num green" style="font-weight:700">+${fmt$(it.uplift)}</td></tr>`).join('');
+    var summary = document.getElementById('c2Summary');
+    if (summary) summary.innerHTML = 
+      '<div class="stat-bar-item"><div class="stat-bar-label">Annual Potential</div><div class="stat-bar-value" style="color:var(--purple)">$' + Math.round(totalUplift).toLocaleString() + '</div><div class="stat-bar-sub">if all adjusted to .99</div></div>' +
+      '<div class="stat-bar-item"><div class="stat-bar-label">Pending Items</div><div class="stat-bar-value">' + pending.length + '</div><div class="stat-bar-sub">awaiting review</div></div>' +
+      '<div class="stat-bar-item"><div class="stat-bar-label">Implemented</div><div class="stat-bar-value" style="color:var(--green)">' + implemented.length + '</div><div class="stat-bar-sub">active price changes</div></div>' +
+      '<div class="stat-bar-item"><div class="stat-bar-label">Implemented Uplift</div><div class="stat-bar-value" style="color:var(--green)">$' + Math.round(implementedUplift).toLocaleString() + '/yr</div><div class="stat-bar-sub">confirmed revenue</div></div>';
+
+    var table = document.getElementById('c2Table');
+    if (table) table.innerHTML = pending.map(it => 
+      '<tr>' +
+      '<td>' + escHtml(it.service_code || '') + '</td>' +
+      '<td>' + escHtml(it.service_name || '') + '</td>' +
+      '<td class="num">$' + (parseFloat(it.old_price) || 0).toFixed(2) + '</td>' +
+      '<td class="num blue">$' + (parseFloat(it.suggested_price) || 0).toFixed(2) + '</td>' +
+      '<td class="num" style="color:var(--purple);font-weight:700">+$' + ((parseFloat(it.suggested_price) || 0) - (parseFloat(it.old_price) || 0)).toFixed(2) + '</td>' +
+      '<td class="num green" style="font-weight:700">$' + Math.round(parseFloat(it.expected_annual_uplift) || 0).toLocaleString() + '/yr</td>' +
+      '<td><button class="btn-activate primary" style="padding:2px 10px;font-size:0.75rem" onclick="approveItem(' + it.id + ')">Approve</button> <button class="btn-activate" style="padding:2px 10px;font-size:0.75rem;color:var(--red)" onclick="dismissItem(' + it.id + ')">Dismiss</button></td>' +
+      '</tr>'
+    ).join('');
+
+    // Update uplift board
+    window._c2Uplift = totalUplift;
+    if (typeof refreshUpliftBoard === 'function') refreshUpliftBoard();
+
+  } catch(e) {
+    console.error('C2 error:', e);
+    var table = document.getElementById('c2Table');
+    if (table) table.innerHTML = '<tr><td colspan="7" style="color:var(--red)">Error: ' + e.message + '</td></tr>';
+  }
 }
 
 async function buildC3() {
@@ -2035,6 +2063,32 @@ async function buildC3() {
   document.getElementById('c3Table').innerHTML = items.map(it =>
     `<tr><td>${escHtml(it.name)}</td><td class="num orange">${fmt$(it.costIncrease)} <span class="muted" style="font-weight:400">(${fmt$(it.oldCost)}${fmt$(it.newCost)})</span></td><td class="num">${fmt$(it.newCost)}  <span style="color:var(--emerald);font-weight:700">${fmt$(it.priceWithBump)}</span></td><td class="num">${fmtN(Math.round(it.annualQty || 0))}</td><td class="num green" style="font-weight:700">+${fmt$(it.annualUplift)}</td></tr>`
   ).join('');
+}
+
+
+
+async function approveItem(queueId) {
+  try {
+    const res = await fetch(SB_URL + '/rest/v1/std_approval_queue?id=eq.' + queueId, {
+      method: 'PATCH',
+      headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', Prefer: 'return=representation' },
+      body: JSON.stringify({ status: 'implemented' })
+    });
+    if (!res.ok) throw new Error('Failed: ' + res.status);
+    buildC2(); // Refresh the table
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+async function dismissItem(queueId) {
+  try {
+    const res = await fetch(SB_URL + '/rest/v1/std_approval_queue?id=eq.' + queueId, {
+      method: 'PATCH',
+      headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', Prefer: 'return=representation' },
+      body: JSON.stringify({ status: 'dismissed' })
+    });
+    if (!res.ok) throw new Error('Failed: ' + res.status);
+    buildC2(); // Refresh
+  } catch(e) { alert('Error: ' + e.message); }
 }
 
 function refreshUpliftBoard() {
