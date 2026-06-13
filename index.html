@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>Vet INC - Business Dashboard</title><link rel="icon" href="data:," /><script src="https://cdn.jsdelivr.net/npm/chart.js"></script><style>
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>Vet INC - Business Dashboard</title><link rel="icon" href="data:," /><script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><style>
  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
  :root {
@@ -1753,18 +1754,71 @@ function showTab(name, btn) {
 
 //  Supabase 
 const SB_URL = 'https://rnqhhzatlxmyvccdvqkr.supabase.co';
-const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJucWhoemF0bHhteXZjY2R2cWtyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTAxNDk4NSwiZXhwIjoyMDkwNTkwOTg1fQ.Js6sEzcCbIkIx5QDtk4TDtSliUeD52e2H2D-Sxatg2w';
+const SB_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJucWhoemF0bHhteXZjY2R2cWtyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwMTQ5ODUsImV4cCI6MjA5MDU5MDk4NX0.zokle21pVEPG5bIOFiyZIWYkYIwhkolWNOhJ7Cbub30';
 const CLINIC_ID = localStorage.getItem('vetinc_clinic_id') || new URLSearchParams(window.location.search).get('clinic') || 'rosslyn';
-// Persist clinic_id from URL
-if (new URLSearchParams(window.location.search).get('clinic')) {
-  localStorage.setItem('vetinc_clinic_id', CLINIC_ID);
-}
-// Update URL without reload
-if (!window.location.search.includes('clinic=')) {
-  const u = new URL(window.location);
-  u.searchParams.set('clinic', CLINIC_ID);
-  window.history.replaceState({}, '', u);
-}
+
+// Supabase client with auth
+const sb = window.supabase ? window.supabase.createClient(SB_URL, SB_ANON_KEY) : null;
+let SB_KEY = SB_ANON_KEY; // will be user's JWT after login
+
+// Auth: show login gate or proceed
+(async function initAuth() {
+  const gate = document.getElementById('loginGate');
+  if (!sb || !gate) return;
+
+  // Check for existing session
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    SB_KEY = session.access_token;
+    gate.remove();
+    localStorage.setItem('vetinc_clinic_id', CLINIC_ID);
+    return;
+  }
+
+  // No session — show login gate, hide everything else
+  gate.style.display = 'flex';
+  gate.style.position = 'fixed';
+  gate.style.inset = '0';
+  gate.style.zIndex = '9999';
+  gate.style.background = '#0b1220';
+  gate.style.alignItems = 'center';
+  gate.style.justifyContent = 'center';
+
+  // Hide main content
+  document.querySelector('header').style.display = 'none';
+  document.querySelector('nav').style.display = 'none';
+  document.querySelector('section').style.display = 'none';
+
+  // Sign in handler
+  document.getElementById('loginBtn').onclick = async () => {
+    const email = document.getElementById('loginEmail').value.trim();
+    const pass = document.getElementById('loginPass').value;
+    const errEl = document.getElementById('loginErr');
+    errEl.textContent = '';
+    if (!email || !pass) { errEl.textContent = 'Enter email and password'; return; }
+    try {
+      const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+      if (error) throw error;
+      SB_KEY = data.session.access_token;
+      gate.remove();
+      document.querySelector('header').style.display = '';
+      document.querySelector('nav').style.display = '';
+      document.querySelectorAll('section').forEach(s => s.style.display = '');
+      localStorage.setItem('vetinc_clinic_id', CLINIC_ID);
+      window.location.reload();
+    } catch (e) {
+      errEl.textContent = e.message || 'Login failed';
+    }
+  };
+
+  // Guest mode (uses anon key — limited by RLS)
+  document.getElementById('guestBtn').onclick = () => {
+    gate.remove();
+    document.querySelector('header').style.display = '';
+    document.querySelector('nav').style.display = '';
+    document.querySelectorAll('section').forEach(s => s.style.display = '');
+  };
+})();
 
 async function sbFetch(table, params) {
  const res = await fetch(`${SB_URL}/rest/v1/${table}?${params}`, {
@@ -4663,7 +4717,7 @@ const WidgetBoard = (() => {
 //
 const ClinicSettings = (() => {
   const SB_URL = 'https://rnqhhzatlxmyvccdvqkr.supabase.co';
-  const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJucWhoemF0bHhteXZjY2R2cWtyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTAxNDk4NSwiZXhwIjoyMDkwNTkwOTg1fQ.Js6sEzcCbIkIx5QDtk4TDtSliUeD52e2H2D-Sxatg2w';
+  // SB_KEY inherited from main script (user JWT or anon key)
   // CLINIC_ID inherited from main script
 
   const DEFAULT_FIXED = [
