@@ -1484,7 +1484,7 @@
       </div>
       <div>
         <label style="font-size:0.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Clinic ID</label>
-        <input type="text" value="rosslyn" readonly style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;margin-top:4px;background:#f8fafc;color:var(--muted)">
+        <input type="text" value="CLINIC_ID" readonly style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;margin-top:4px;background:#f8fafc;color:var(--muted)">
       </div>
       <div>
         <label style="font-size:0.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Email</label>
@@ -1754,6 +1754,17 @@ function showTab(name, btn) {
 //  Supabase 
 const SB_URL = 'https://rnqhhzatlxmyvccdvqkr.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJucWhoemF0bHhteXZjY2R2cWtyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTAxNDk4NSwiZXhwIjoyMDkwNTkwOTg1fQ.Js6sEzcCbIkIx5QDtk4TDtSliUeD52e2H2D-Sxatg2w';
+const CLINIC_ID = localStorage.getItem('vetinc_clinic_id') || new URLSearchParams(window.location.search).get('clinic') || 'rosslyn';
+// Persist clinic_id from URL
+if (new URLSearchParams(window.location.search).get('clinic')) {
+  localStorage.setItem('vetinc_clinic_id', CLINIC_ID);
+}
+// Update URL without reload
+if (!window.location.search.includes('clinic=')) {
+  const u = new URL(window.location);
+  u.searchParams.set('clinic', CLINIC_ID);
+  window.history.replaceState({}, '', u);
+}
 
 async function sbFetch(table, params) {
  const res = await fetch(`${SB_URL}/rest/v1/${table}?${params}`, {
@@ -2084,7 +2095,7 @@ Object.assign(CPI_RATES, {
 
 async function buildC1() {
   try {
-    const res = await fetch(SB_URL + '/rest/v1/std_approval_queue?select=id,service_code,service_name,old_price,suggested_price,price_increase_pct,expected_monthly_uplift,expected_annual_uplift,volume_risk,status,priority&clinic_id=eq.rosslyn&strategy=eq.inflation_catchup&order=expected_annual_uplift.desc&limit=500', {
+    const res = await fetch(SB_URL + '/rest/v1/std_approval_queue?select=id,service_code,service_name,old_price,suggested_price,price_increase_pct,expected_monthly_uplift,expected_annual_uplift,volume_risk,status,priority&clinic_id=eq.${CLINIC_ID}&strategy=eq.inflation_catchup&order=expected_annual_uplift.desc&limit=500', {
       headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY }
     });
     if (!res.ok) throw new Error('Failed: ' + res.status);
@@ -2163,7 +2174,7 @@ function c1Render(filter) {
 async function buildC2() {
   try {
     // Load 99-cent pricing recommendations from std_approval_queue
-    const res = await fetch(SB_URL + '/rest/v1/std_approval_queue?select=id,service_code,service_name,old_price,suggested_price,price_increase_pct,expected_monthly_uplift,expected_annual_uplift,volume_risk,priority,status&clinic_id=eq.rosslyn&strategy=eq.price_ending&order=expected_annual_uplift.desc&limit=500', {
+    const res = await fetch(SB_URL + '/rest/v1/std_approval_queue?select=id,service_code,service_name,old_price,suggested_price,price_increase_pct,expected_monthly_uplift,expected_annual_uplift,volume_risk,priority,status&clinic_id=eq.${CLINIC_ID}&strategy=eq.price_ending&order=expected_annual_uplift.desc&limit=500', {
       headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY }
     });
     if (!res.ok) throw new Error('Failed to load queue: ' + res.status);
@@ -2232,7 +2243,7 @@ async function buildC3() {
 async function approveAll99() {
   if (!confirm('Approve all 99-cent pricing changes? This will update ' + (window._c2Pending || 0) + ' items.')) return;
   try {
-    const res = await fetch(SB_URL + '/rest/v1/std_approval_queue?clinic_id=eq.rosslyn&strategy=eq.price_ending&status=eq.pending', {
+    const res = await fetch(SB_URL + '/rest/v1/std_approval_queue?clinic_id=eq.${CLINIC_ID}&strategy=eq.price_ending&status=eq.pending', {
       method: 'PATCH',
       headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: 'implemented' })
@@ -2246,7 +2257,7 @@ async function approveAll99() {
 async function approveAllInflation() {
   if (!confirm('Approve all inflation price adjustments?')) return;
   try {
-    const res = await fetch(SB_URL + '/rest/v1/std_approval_queue?clinic_id=eq.rosslyn&strategy=eq.inflation_catchup&status=eq.pending', {
+    const res = await fetch(SB_URL + '/rest/v1/std_approval_queue?clinic_id=eq.${CLINIC_ID}&strategy=eq.inflation_catchup&status=eq.pending', {
       method: 'PATCH',
       headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: 'implemented' })
@@ -2304,7 +2315,7 @@ function refreshUpliftBoard() {
 
 async function loadCapturedRevenue() {
   try {
-    const res = await fetch(`${SB_URL}/rest/v1/std_daily_kpis?clinic_id=eq.rosslyn&order=day.desc&limit=90`, {
+    const res = await fetch(`${SB_URL}/rest/v1/std_daily_kpis?clinic_id=eq.${CLINIC_ID}&order=day.desc&limit=90`, {
       headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
     });
     if(!res.ok) throw new Error('Failed');
@@ -2346,7 +2357,7 @@ async function loadCapturedRevenue() {
 
     // 3. Extra Profit Captured this month
     try {
-      const campRes = await fetch(`${SB_URL}/rest/v1/std_campaign_results?select=captured_uplift,day&clinic_id=eq.rosslyn&day=gte.${monthStart}`, {
+      const campRes = await fetch(`${SB_URL}/rest/v1/std_campaign_results?select=captured_uplift,day&clinic_id=eq.${CLINIC_ID}&day=gte.${monthStart}`, {
         headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
       });
       if (campRes.ok) {
@@ -2378,7 +2389,7 @@ async function loadCapturedRevenue() {
 async function loadServiceData() {
   try {
     // Use daily_kpis for reliable daily revenue + visits
-    const res = await fetch(`${SB_URL}/rest/v1/std_daily_kpis?select=day,total_revenue,total_visits,total_transactions,avg_invoice_value&clinic_id=eq.rosslyn&order=day.desc&limit=200`, {
+    const res = await fetch(`${SB_URL}/rest/v1/std_daily_kpis?select=day,total_revenue,total_visits,total_transactions,avg_invoice_value&clinic_id=eq.${CLINIC_ID}&order=day.desc&limit=200`, {
       headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY }
     });
     if (!res.ok) {
@@ -2390,7 +2401,7 @@ async function loadServiceData() {
 
     // Fetch Vet INC implementation start date (first implemented item)
     try {
-      const implRes = await fetch(SB_URL + '/rest/v1/std_approval_queue?select=created_at&clinic_id=eq.rosslyn&status=eq.implemented&order=created_at.asc&limit=1', {
+      const implRes = await fetch(SB_URL + '/rest/v1/std_approval_queue?select=created_at&clinic_id=eq.${CLINIC_ID}&status=eq.implemented&order=created_at.asc&limit=1', {
         headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY }
       });
       if (implRes.ok) {
@@ -3700,62 +3711,62 @@ const WidgetBoard = (() => {
 
     switch(widget) {
       case 'today-revenue':
-        data = await sbQ('std_transactions', `select=amount,txn_date&clinic_id=eq.rosslyn&txn_date=gte.${params.date}T00:00:00&txn_date=lt.${params.date}T23:59:59`);
+        data = await sbQ('std_transactions', `select=amount,txn_date&clinic_id=eq.${CLINIC_ID}&txn_date=gte.${params.date}T00:00:00&txn_date=lt.${params.date}T23:59:59`);
         data = data.map(r => ({amount: (r.amount||0)/100, created_at: r.txn_date}));
         break;
       case 'week-revenue':
       case 'week-vs-last':
-        data = await sbQ('std_transactions', `select=amount,txn_date&clinic_id=eq.rosslyn&txn_date=gte.${params.from}&txn_date=lt.${params.to}&order=txn_date.asc`);
+        data = await sbQ('std_transactions', `select=amount,txn_date&clinic_id=eq.${CLINIC_ID}&txn_date=gte.${params.from}&txn_date=lt.${params.to}&order=txn_date.asc`);
         data = data.map(r => ({amount: (r.amount||0)/100, created_at: r.txn_date}));
         break;
       case 'month-revenue':
-        data = await sbQ('std_transactions', `select=amount,txn_date&clinic_id=eq.rosslyn&txn_date=gte.${params.month_start}&txn_date=lt.${params.month_end}&order=txn_date.asc`);
+        data = await sbQ('std_transactions', `select=amount,txn_date&clinic_id=eq.${CLINIC_ID}&txn_date=gte.${params.month_start}&txn_date=lt.${params.month_end}&order=txn_date.asc`);
         data = data.map(r => ({amount: (r.amount||0)/100, created_at: r.txn_date}));
         break;
       case 'top-services':
       case 'revenue-by-category':
-        data = await sbQ('std_transactions', `select=service_code,description,amount,quantity,category,txn_date&order=amount.desc&limit=5000&clinic_id=eq.rosslyn`);
+        data = await sbQ('std_transactions', `select=service_code,description,amount,quantity,category,txn_date&order=amount.desc&limit=5000&clinic_id=eq.${CLINIC_ID}`);
         break;
       case 'monthly-trend':
-        data = await sbQ('std_transactions', `select=amount,txn_date&clinic_id=eq.rosslyn&txn_date=gte.${params.from}&order=txn_date.asc`);
+        data = await sbQ('std_transactions', `select=amount,txn_date&clinic_id=eq.${CLINIC_ID}&txn_date=gte.${params.from}&order=txn_date.asc`);
         data = data.map(r => ({amount: (r.amount||0)/100, created_at: r.txn_date}));
         break;
       case 'avg-visit-value':
       case 'services-per-visit': {
-        const accts = await sbQ('std_transactions', `select=amount,txn_date&clinic_id=eq.rosslyn&txn_date=gte.${params.month_start}&txn_date=lt.${params.month_end}`);
-        const visits = await sbQ('std_visits', `select=visit_date,doctor&visit_date=gte.${params.month_start}&visit_date=lt.${params.month_end}&clinic_id=eq.rosslyn`);
+        const accts = await sbQ('std_transactions', `select=amount,txn_date&clinic_id=eq.${CLINIC_ID}&txn_date=gte.${params.month_start}&txn_date=lt.${params.month_end}`);
+        const visits = await sbQ('std_visits', `select=visit_date,doctor&visit_date=gte.${params.month_start}&visit_date=lt.${params.month_end}&clinic_id=eq.${CLINIC_ID}`);
         data = { services: accts.map(a => ({amount: (a.amount||0)/100})), visits };
         break;
       }
       case 'visits-today':
-        data = await sbQ('std_visits', `select=visit_date,doctor&visit_date=gte.${params.date}&visit_date=lt.${params.date}&clinic_id=eq.rosslyn`);
+        data = await sbQ('std_visits', `select=visit_date,doctor&visit_date=gte.${params.date}&visit_date=lt.${params.date}&clinic_id=eq.${CLINIC_ID}`);
         break;
       case 'visits-month':
-        data = await sbQ('std_visits', `select=visit_date,doctor&visit_date=gte.${params.month_start}&visit_date=lt.${params.month_end}&clinic_id=eq.rosslyn`);
+        data = await sbQ('std_visits', `select=visit_date,doctor&visit_date=gte.${params.month_start}&visit_date=lt.${params.month_end}&clinic_id=eq.${CLINIC_ID}`);
         break;
       case 'patients-per-doctor':
-        data = await sbQ('std_visits', `select=doctor&visit_date=gte.${params.date}&visit_date=lt.${params.date}&clinic_id=eq.rosslyn`);
+        data = await sbQ('std_visits', `select=doctor&visit_date=gte.${params.date}&visit_date=lt.${params.date}&clinic_id=eq.${CLINIC_ID}`);
         break;
       case 'doctor-revenue': {
-        const visits = await sbQ('std_visits', `select=visit_date,doctor&visit_date=gte.${params.month_start}&visit_date=lt.${params.month_end}&clinic_id=eq.rosslyn`);
-        const accts = await sbQ('std_transactions', `select=amount,txn_date&clinic_id=eq.rosslyn&txn_date=gte.${params.month_start}&txn_date=lt.${params.month_end}`);
+        const visits = await sbQ('std_visits', `select=visit_date,doctor&visit_date=gte.${params.month_start}&visit_date=lt.${params.month_end}&clinic_id=eq.${CLINIC_ID}`);
+        const accts = await sbQ('std_transactions', `select=amount,txn_date&clinic_id=eq.${CLINIC_ID}&txn_date=gte.${params.month_start}&txn_date=lt.${params.month_end}`);
         data = { visits, services: accts.map(a => ({amount: (a.amount||0)/100})) };
         break;
       }
       case 'new-clients':
-        data = await sbQ('std_clients', `select=id&created_at=gte.${params.month_start}&created_at=lt.${params.month_end}&clinic_id=eq.rosslyn`);
+        data = await sbQ('std_clients', `select=id&created_at=gte.${params.month_start}&created_at=lt.${params.month_end}&clinic_id=eq.${CLINIC_ID}`);
         break;
       case 'vaccines-month':
-        data = await sbQ('std_vaccines', `select=vaccine_date,doctor&vaccine_date=gte.${params.month_start}&vaccine_date=lt.${params.month_end}&clinic_id=eq.rosslyn`);
+        data = await sbQ('std_vaccines', `select=vaccine_date,doctor&vaccine_date=gte.${params.month_start}&vaccine_date=lt.${params.month_end}&clinic_id=eq.${CLINIC_ID}`);
         break;
       case 'vaccines-by-doctor':
-        data = await sbQ('std_vaccines', `select=doctor,vaccine_date&vaccine_date=gte.${params.month_start}&vaccine_date=lt.${params.month_end}&clinic_id=eq.rosslyn`);
+        data = await sbQ('std_vaccines', `select=doctor,vaccine_date&vaccine_date=gte.${params.month_start}&vaccine_date=lt.${params.month_end}&clinic_id=eq.${CLINIC_ID}`);
         break;
       case 'appointments-today':
-        data = await sbQ('std_appointments', `select=appointment_date,doctor,reason&appointment_date=gte.${params.date}&appointment_date=lt.${params.date}&order=appointment_date.asc&clinic_id=eq.rosslyn`);
+        data = await sbQ('std_appointments', `select=appointment_date,doctor,reason&appointment_date=gte.${params.date}&appointment_date=lt.${params.date}&order=appointment_date.asc&clinic_id=eq.${CLINIC_ID}`);
         break;
       case 'upcoming-appointments':
-        data = await sbQ('std_appointments', `select=appointment_date,doctor&appointment_date=gte.${params.from}&appointment_date=lt.${params.to}&order=appointment_date.asc&clinic_id=eq.rosslyn`);
+        data = await sbQ('std_appointments', `select=appointment_date,doctor&appointment_date=gte.${params.from}&appointment_date=lt.${params.to}&order=appointment_date.asc&clinic_id=eq.${CLINIC_ID}`);
         break;
       case 'price-staleness':
         data = await sbQ('prices', `select=treatment_code,price,updated_at&order=updated_at.asc`);
@@ -3766,7 +3777,7 @@ const WidgetBoard = (() => {
         break;
       case 'ytd-revenue': {
         const yr = new Date().getFullYear();
-        const rows = await sbQ('std_transactions', `select=amount&clinic_id=eq.rosslyn&txn_date=gte.${yr}-01-01&txn_date=lt.${yr+1}-01-01`);
+        const rows = await sbQ('std_transactions', `select=amount&clinic_id=eq.${CLINIC_ID}&txn_date=gte.${yr}-01-01&txn_date=lt.${yr+1}-01-01`);
         data = rows.map(r => ({amount: (r.amount||0)/100}));
         break;
       }
@@ -4653,7 +4664,7 @@ const WidgetBoard = (() => {
 const ClinicSettings = (() => {
   const SB_URL = 'https://rnqhhzatlxmyvccdvqkr.supabase.co';
   const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJucWhoemF0bHhteXZjY2R2cWtyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTAxNDk4NSwiZXhwIjoyMDkwNTkwOTg1fQ.Js6sEzcCbIkIx5QDtk4TDtSliUeD52e2H2D-Sxatg2w';
-  const CLINIC_ID = 'rosslyn';
+  // CLINIC_ID inherited from main script
 
   const DEFAULT_FIXED = [
     { label: 'Rent / Facility', amount: 0 },
@@ -5214,7 +5225,7 @@ const CampaignUI = (() => {
   async function loadCampaignState() {
     for (const [type, num] of Object.entries(campaigns)) {
       try {
-        const res = await fetch(`https://rnqhhzatlxmyvccdvqkr.supabase.co/rest/v1/campaigns?select=*&clinic_id=eq.rosslyn&campaign_type=eq.${type}&status=eq.active&limit=1`, {
+        const res = await fetch(`https://rnqhhzatlxmyvccdvqkr.supabase.co/rest/v1/campaigns?select=*&clinic_id=eq.${CLINIC_ID}&campaign_type=eq.${type}&status=eq.active&limit=1`, {
           headers: {
             apikey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJucWhoemF0bHhteXZjY2R2cWtyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwMTQ5ODUsImV4cCI6MjA5MDU5MDk4NX0.zokle21pVEPG5bIOFiyZIWYkYIwhkolWNOhJ7Cbub30',
             Authorization: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJucWhoemF0bHhteXZjY2R2cWtyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwMTQ5ODUsImV4cCI6MjA5MDU5MDk4NX0.zokle21pVEPG5bIOFiyZIWYkYIwhkolWNOhJ7Cbub30'
@@ -5307,7 +5318,7 @@ window.activateCampaign = async function(type) {
         Prefer: 'return=representation'
       },
       body: JSON.stringify({
-        clinic_id: 'rosslyn',
+        clinic_id: CLINIC_ID,
         campaign_type: type,
         name: type === 'inflation' ? 'Inflation Price Adjustment' :
               type === '99-pricing' ? '.99 Pricing Recovery' : 'Inventory Micro Margin',
@@ -5366,7 +5377,7 @@ window.openCampaignAnalytics = async function(type) {
 
   try {
     // Get campaign
-    const res = await fetch(`https://rnqhhzatlxmyvccdvqkr.supabase.co/rest/v1/campaigns?select=*&clinic_id=eq.rosslyn&campaign_type=eq.${type}&status=eq.active&limit=1`, {
+    const res = await fetch(`https://rnqhhzatlxmyvccdvqkr.supabase.co/rest/v1/campaigns?select=*&clinic_id=eq.${CLINIC_ID}&campaign_type=eq.${type}&status=eq.active&limit=1`, {
       headers: {
         apikey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJucWhoemF0bHhteXZjY2R2cWtyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwMTQ5ODUsImV4cCI6MjA5MDU5MDk4NX0.zokle21pVEPG5bIOFiyZIWYkYIwhkolWNOhJ7Cbub30',
         Authorization: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJucWhoemF0bHhteXZjY2R2cWtyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwMTQ5ODUsImV4cCI6MjA5MDU5MDk4NX0.zokle21pVEPG5bIOFiyZIWYkYIwhkolWNOhJ7Cbub30'
@@ -5573,7 +5584,7 @@ function sCard(label, value, sub, color) {
 async function loadShoppables() {
   try {
     // 1. Check if campaign is active
-    const res = await fetch(SB_URL + '/rest/v1/campaigns?select=*&clinic_id=eq.rosslyn&campaign_type=eq.shoppables&status=eq.active&limit=1', {
+    const res = await fetch(SB_URL + '/rest/v1/campaigns?select=*&clinic_id=eq.${CLINIC_ID}&campaign_type=eq.shoppables&status=eq.active&limit=1', {
       headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY }
     });
     const camps = await res.json();
@@ -5906,7 +5917,7 @@ window.activateShoppables = async function() {
       method: 'POST',
       headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', Prefer: 'return=representation' },
       body: JSON.stringify({
-        clinic_id: 'rosslyn', campaign_type: 'shoppables',
+        clinic_id: CLINIC_ID, campaign_type: 'shoppables',
         name: 'Shoppables — Exam Drop Initiative', status: 'active',
         activated_at: new Date().toISOString(),
         total_items: items.length, implemented_items: 0,
