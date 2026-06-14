@@ -1332,8 +1332,11 @@
  --><section id="tab-inventory" class="section"><div style="min-height:60vh;display:flex;align-items:center;justify-content:center;background:#eff6ff"><div style="background:#fff;border-radius:16px;box-shadow:0 2px 16px rgba(37,99,235,0.08);padding:3rem 4rem;text-align:center;max-width:520px"><div style="font-size:3rem;margin-bottom:1rem">🔒</div><div style="font-size:1.4rem;font-weight:700;color:#1e293b;margin-bottom:0.5rem">Inventory Intelligence Locked</div><div style="font-size:0.95rem;color:#94a3b8">Temporarily locked while we audit COGS and revenue data.</div></div></div></section><!--
  SECTION 4: Insights & Actions
  --><section id="tab-insights" class="section">
-<div class="insight-inbox">
-  <div class="settings-card-title">Insights Inbox</div>
+<div class="insight-inbox" style="padding:1rem 1.75rem;border-bottom:1px solid var(--border)">
+  <div class="settings-card-title" style="margin-bottom:0.8rem">Insights Inbox <span id="inboxBadge" style="background:var(--primary);color:#fff;font-size:0.65rem;padding:0.1rem 0.5rem;border-radius:10px;font-weight:700;margin-left:0.3rem">0</span></div>
+  <div id="inboxList" style="display:flex;flex-direction:column;gap:0.6rem">
+    <div style="padding:1rem;text-align:center;color:var(--muted);font-size:0.82rem">Loading insights...</div>
+  </div>
 </div>
 <div style="padding:1.5rem 1.75rem">
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem">
@@ -6589,7 +6592,52 @@ async function loadEngineData(){
 }
 // Load engine data when tab is shown
 const origShowTab=window.showTab;
-if(typeof origShowTab==='function'){window.showTab=function(name,btn){origShowTab(name,btn);if(name==='engine')loadEngineData()}}
+if(typeof origShowTab==='function'){window.showTab=function(name,btn){origShowTab(name,btn);if(name==='engine')loadEngineData();if(name==='insights')loadInbox()}}
+
+// ===== INSIGHTS INBOX =====
+async function loadInbox(){
+  const list=document.getElementById('inboxList');
+  const badge=document.getElementById('inboxBadge');
+  if(!list) return;
+  try{
+    const CLINIC_ID=localStorage.getItem('vetinc_clinic_id')||new URLSearchParams(location.search).get('clinic')||'rosslyn';
+    const res=await sbFetch('/rest/v1/rpc/get_insights',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({p_clinic_id:CLINIC_ID})});
+    if(!res){list.innerHTML='<div style="padding:1rem;text-align:center;color:var(--muted);font-size:0.82rem">Sign in to view insights</div>';return}
+    const data=await res.json();
+    const items=data.insights||[];
+    badge.textContent=items.length;
+    badge.style.display=items.length>0?'':'none';
+    if(!items.length){list.innerHTML='<div style="padding:1rem;text-align:center;color:var(--muted);font-size:0.82rem">No alerts. Engine running normally.</div>';return}
+    const priColor={urgent:'#ef4444',high:'#f59e0b',medium:'#3b82f6',low:'#10b981'};
+    list.innerHTML=items.map(it=>{
+      const pc=priColor[it.priority]||'#6b7280';
+      const actions=(it.actions||[]).map(a=>{
+        if(a==='keep_price')return `<button onclick="inboxAction(${it.experiment_id},'keep_price')" style="background:#d1fae5;color:#065f46;border:none;border-radius:6px;padding:0.35rem 0.7rem;font-size:0.7rem;font-weight:600;cursor:pointer">Keep Price</button>`;
+        if(a==='revert_price')return `<button onclick="inboxAction(${it.experiment_id},'revert_price')" style="background:#fee2e2;color:#991b1b;border:none;border-radius:6px;padding:0.35rem 0.7rem;font-size:0.7rem;font-weight:600;cursor:pointer">Revert</button>`;
+        if(a==='dismiss')return `<button onclick="inboxAction(${it.experiment_id},'dismiss')" style="background:var(--surface2);color:var(--muted);border:none;border-radius:6px;padding:0.35rem 0.7rem;font-size:0.7rem;font-weight:600;cursor:pointer">Dismiss</button>`;
+        return '';
+      }).join('');
+      return `<div style="background:#fff;border:1px solid var(--border);border-left:3px solid ${pc};border-radius:8px;padding:0.7rem 0.9rem">
+        <div style="display:flex;align-items:flex-start;gap:0.5rem">
+          <span style="font-size:1rem">${it.icon||''}</span>
+          <div style="flex:1">
+            <div style="font-size:0.8rem;font-weight:700;color:var(--text)">${it.title||''}</div>
+            ${it.detail?`<div style="font-size:0.72rem;color:var(--muted);margin-top:0.2rem">${it.detail}</div>`:''}
+            <div style="display:flex;gap:0.4rem;margin-top:0.5rem">${actions}</div>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){console.error('Inbox error',e);list.innerHTML='<div style="padding:1rem;text-align:center;color:var(--muted);font-size:0.82rem">Unable to load insights</div>'}
+}
+async function inboxAction(expId,action){
+  const fn={keep_price:'insight_keep_price',revert_price:'insight_revert_price',dismiss:'insight_dismiss'}[action];
+  if(!fn)return;
+  try{
+    const res=await sbFetch('/rest/v1/rpc/'+fn,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({p_experiment_id:expId})});
+    if(res&&res.ok){loadInbox()}
+  }catch(e){console.error('Inbox action error',e)}
+}
 </script>
 <div class="modal-backdrop" id="implementModal">
   <div class="modal-card">
